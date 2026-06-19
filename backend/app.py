@@ -1,4 +1,4 @@
-"""PDFForge — Flask API + static host for the React frontend.
+"""PDFVish — Flask API + static host for the React frontend.
 
 All processing happens locally on this machine: files are written to ./uploads,
 results to ./outputs, and nothing leaves the box.
@@ -501,7 +501,7 @@ def serve_react(path):
     if os.path.exists(index):
         return send_from_directory(STATIC_DIR, "index.html")
     return jsonify(
-        message="PDFForge API is running. Build the frontend to serve the UI."
+        message="PDFVish API is running. Build the frontend to serve the UI."
     )
 
 

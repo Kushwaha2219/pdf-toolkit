@@ -1,4 +1,4 @@
-# PDFForge — Flask + React + Vite
+# PDFVish — Flask + React + Vite
 
 Self-hosted PDF toolkit. Zero cost, zero cloud, zero API keys.
 
