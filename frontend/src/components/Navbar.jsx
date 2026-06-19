@@ -21,7 +21,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const collapseRef = useRef(null)
   const location = useLocation()
-  const { isAuthenticated, user, logout } = useAuth()
+  const { isAuthenticated, user, logout, loading } = useAuth()
 
   // Close dropdowns + mobile panel whenever the route changes.
   useEffect(() => {
@@ -152,7 +152,10 @@ export default function Navbar() {
           </nav>
 
           <div className={styles.auth}>
-            {isAuthenticated ? (
+            {/* While the stored token is being validated, show neither state —
+                otherwise a logged-in user sees a flash of Login/Signup on every
+                page refresh until /auth/me resolves. */}
+            {loading ? null : isAuthenticated ? (
               <>
                 <span className={styles.userName} title={user?.email}>
                   {user?.name}
