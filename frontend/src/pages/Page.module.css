@@ -48,6 +48,17 @@
   font-size: 0.82rem;
 }
 
+.select {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
 .actions {
   margin-top: 1.5rem;
   display: flex;

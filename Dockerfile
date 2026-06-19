@@ -17,12 +17,17 @@ FROM python:3.12-slim AS runtime
 # Runtime libs:
 #  - libglib2.0-0 / libgl1: needed by opencv (pulled in via pdf2docx)
 #  - libreoffice-writer/impress/calc: headless Office -> PDF conversion
-#  - fonts: so converted documents render with sensible fonts
+#  - tesseract-ocr + ghostscript: OCR for scanned PDFs (used by ocrmypdf so
+#    PDF -> Word/Excel produces real text instead of an empty document)
+#  - fonts-crosextra-carlito/caladea: metric-compatible substitutes for
+#    Calibri/Cambria, so Office -> PDF keeps layout when those fonts are used
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libglib2.0-0 libgl1 \
         libreoffice-writer libreoffice-impress libreoffice-calc \
+        tesseract-ocr tesseract-ocr-eng ghostscript \
         fonts-dejavu fonts-liberation \
+        fonts-crosextra-carlito fonts-crosextra-caladea \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/backend

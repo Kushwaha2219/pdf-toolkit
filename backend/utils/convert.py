@@ -11,11 +11,67 @@ from pdf2docx import Converter
 
 
 # --------------------------------------------------------------------------- #
+# OCR helpers — make scanned (image-only) PDFs convertible
+#
+# pdf2docx / pdfplumber both read the PDF's *text layer*. A scanned document has
+# none, so without OCR they would silently produce an empty result. These helpers
+# detect that case and run OCR to add a real text layer before conversion.
+# --------------------------------------------------------------------------- #
+def _pdf_has_text(input_path, min_chars=10):
+    """Return True if the PDF already has an extractable text layer."""
+    doc = fitz.open(input_path)
+    try:
+        chars = 0
+        for page in doc:
+            chars += len(page.get_text("text").strip())
+            if chars >= min_chars:
+                return True
+        return False
+    finally:
+        doc.close()
+
+
+def _ensure_text_layer(input_path, work_dir):
+    """Return a PDF that has a text layer.
+
+    If the input already has extractable text, it is returned unchanged. If it is
+    a scanned/image-only PDF, it is OCR'd and the path to a new searchable PDF is
+    returned. If OCR is unavailable (e.g. Tesseract not installed locally) or
+    fails, we fall back to the original so conversion still proceeds rather than
+    crashing.
+    """
+    if _pdf_has_text(input_path):
+        return input_path
+    try:
+        import ocrmypdf
+
+        ocr_out = os.path.join(work_dir, "ocr_" + os.path.basename(input_path))
+        ocrmypdf.ocr(
+            input_path,
+            ocr_out,
+            language="eng",
+            force_ocr=True,       # input has no text layer, so rasterize+OCR all
+            progress_bar=False,
+            optimize=0,
+        )
+        return ocr_out
+    except Exception as exc:  # noqa: BLE001 — degrade gracefully, keep converting
+        print(f"[convert] OCR unavailable/failed ({exc}); using original PDF.")
+        return input_path
+
+
+# --------------------------------------------------------------------------- #
 # PDF -> Word
 # --------------------------------------------------------------------------- #
 def pdf_to_docx(input_path, output_path):
-    """Convert a PDF into an editable Word (.docx) document."""
-    cv = Converter(input_path)
+    """Convert a PDF into an editable Word (.docx) document.
+
+    Scanned PDFs are OCR'd first so the result contains real, editable text
+    instead of coming out empty.
+    """
+    work_dir = os.path.dirname(output_path) or "."
+    source = _ensure_text_layer(input_path, work_dir)
+    cv = Converter(source)
     try:
         cv.convert(output_path, start=0, end=None)
     finally:
@@ -116,10 +172,13 @@ def pdf_to_xlsx(input_path, output_path):
     import pdfplumber
     from openpyxl import Workbook
 
+    work_dir = os.path.dirname(output_path) or "."
+    source = _ensure_text_layer(input_path, work_dir)
+
     wb = Workbook()
     wb.remove(wb.active)  # start with no sheets
 
-    with pdfplumber.open(input_path) as pdf:
+    with pdfplumber.open(source) as pdf:
         for page_no, page in enumerate(pdf.pages, start=1):
             ws = wb.create_sheet(title=f"Page {page_no}"[:31])
             tables = page.extract_tables()

@@ -21,9 +21,14 @@ export default function ConversionTool({ config }) {
     outName = 'result',
     cta,
     hint,
+    options = [],
   } = config
 
   const [files, setFiles] = useState([])
+  // Extra option fields (e.g. image quality). Seed from each option's default.
+  const [optionValues, setOptionValues] = useState(() =>
+    Object.fromEntries(options.map((o) => [o.name, o.default]))
+  )
   const { submit, download, status, error, filename, isWorking } =
     useToolSubmit(endpoint)
 
@@ -33,6 +38,7 @@ export default function ConversionTool({ config }) {
     e.preventDefault()
     const fd = new FormData()
     files.forEach((f) => fd.append('files', f))
+    options.forEach((o) => fd.append(o.name, optionValues[o.name]))
     submit(fd, outName)
   }
 
@@ -52,6 +58,29 @@ export default function ConversionTool({ config }) {
           accept={accept}
           hint={hint || (multiple ? 'Select one or more files' : 'Select a file')}
         />
+
+        {options.map((o) => (
+          <div key={o.name} className={styles.field}>
+            <label className={styles.label} htmlFor={`opt-${o.name}`}>
+              {o.label}
+            </label>
+            <select
+              id={`opt-${o.name}`}
+              className={styles.select}
+              value={optionValues[o.name]}
+              disabled={isWorking}
+              onChange={(e) =>
+                setOptionValues((v) => ({ ...v, [o.name]: e.target.value }))
+              }
+            >
+              {o.choices.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
 
         <div className={styles.actions}>
           <button type="submit" className="btn" disabled={!canSubmit}>

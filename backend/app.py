@@ -335,8 +335,15 @@ def api_pdf_to_jpg():
     out = tempfile.mkdtemp(dir=OUTPUT_DIR)
     try:
         path = _save_uploads(_require_files("files", 1), job)[0]
+        # Quality is user-selectable; clamp to a safe allow-list of DPIs.
+        try:
+            dpi = int(request.form.get("dpi", 150))
+        except (TypeError, ValueError):
+            dpi = 150
+        if dpi not in (150, 300, 600):
+            dpi = 150
         result = os.path.join(out, "images.zip")
-        pdf_to_jpg_zip(path, out, result)
+        pdf_to_jpg_zip(path, out, result, dpi=dpi)
     except ValueError as e:
         return _fail(job, out, str(e))
     return _send_and_cleanup(result, "images.zip", "application/zip", job, out)

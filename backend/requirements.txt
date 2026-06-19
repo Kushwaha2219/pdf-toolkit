@@ -10,6 +10,7 @@ gunicorn==23.0.0
 python-pptx==1.0.2
 pdfplumber==0.11.7
 openpyxl==3.1.5
+ocrmypdf>=16,<17
 pyhanko[pkcs11]==0.31.0
 Flask-SQLAlchemy==3.1.1
 PyMySQL==1.1.1

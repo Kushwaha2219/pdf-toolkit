@@ -73,7 +73,8 @@ export const tools = [
     endpoint: "/pdf-to-pptx",
     icon: "📊",
     title: "PDF → PowerPoint",
-    description: "Convert each PDF page into a PowerPoint slide.",
+    description:
+      "Place each PDF page as a full-page image on its own slide. Layout is preserved exactly; text is not editable.",
     accept: PDF,
     outName: "converted.pptx",
     category: "Convert from PDF",
@@ -84,7 +85,8 @@ export const tools = [
     endpoint: "/pdf-to-excel",
     icon: "📗",
     title: "PDF → Excel",
-    description: "Extract tables from a PDF into an Excel workbook.",
+    description:
+      "Extract tables into an Excel workbook. Works best on PDFs with clearly bordered tables; scanned files are read with OCR.",
     accept: PDF,
     outName: "converted.xlsx",
     category: "Convert from PDF",
@@ -99,6 +101,18 @@ export const tools = [
     accept: PDF,
     outName: "images.zip",
     category: "Convert from PDF",
+    options: [
+      {
+        name: "dpi",
+        label: "Image quality",
+        default: "150",
+        choices: [
+          { value: "150", label: "Screen — 150 DPI (smallest file)" },
+          { value: "300", label: "Print — 300 DPI" },
+          { value: "600", label: "High detail — 600 DPI (largest file)" },
+        ],
+      },
+    ],
   },
 
   // ---- Convert to PDF ----
