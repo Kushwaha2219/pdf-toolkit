@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(& \"c:\\\\Users\\\\2440807\\\\OneDrive - Cognizant\\\\Desktop\\\\pdf-toolkit\\\\backend\\\\venv\\\\Scripts\\\\python.exe\" --version)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell(\"removed\")"
+    ]
+  }
+}

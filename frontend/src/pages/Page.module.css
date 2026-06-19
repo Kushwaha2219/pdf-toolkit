@@ -1,0 +1,84 @@
+/* Shared layout for every tool page. */
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.icon {
+  font-size: 2.5rem;
+}
+
+.title {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+}
+
+.field {
+  margin-top: 1.25rem;
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.help {
+  margin: 0.4rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.actions {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.radioRow {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.radio {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  cursor: pointer;
+  background: var(--bg-elevated);
+  font-size: 0.9rem;
+}
+
+.radio input {
+  accent-color: var(--primary);
+}
+
+.radioActive {
+  border-color: var(--primary);
+  background: rgba(75, 85, 99, 0.1);
+}

@@ -1,0 +1,66 @@
+/* Fixed, full-viewport decorative layer that sits behind all content. */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.shape {
+  position: absolute;
+  display: block;
+  opacity: 0.5;
+}
+
+/* ---- Shape geometry ---- */
+.circle {
+  border-radius: 50%;
+}
+
+.square {
+  border-radius: 14px;
+  transform: rotate(var(--rot, 0deg));
+}
+
+.diamond {
+  border-radius: 12px;
+  transform: rotate(45deg);
+}
+
+/* Outlined ring — hollow circle */
+.ring {
+  border-radius: 50%;
+  background: transparent !important;
+  border-width: 10px;
+  border-style: solid;
+}
+
+/* ---- Colors (soft pastel fills + matching ring borders) ---- */
+.coral {
+  background: rgba(255, 107, 107, 0.22);
+  border-color: rgba(255, 107, 107, 0.3);
+}
+.blue {
+  background: rgba(94, 154, 255, 0.22);
+  border-color: rgba(94, 154, 255, 0.3);
+}
+.green {
+  background: rgba(0, 200, 150, 0.2);
+  border-color: rgba(0, 200, 150, 0.3);
+}
+.amber {
+  background: rgba(255, 190, 70, 0.22);
+  border-color: rgba(255, 190, 70, 0.32);
+}
+.violet {
+  background: rgba(168, 120, 255, 0.2);
+  border-color: rgba(168, 120, 255, 0.3);
+}
+
+/* Tone the decoration down on small screens so it doesn't crowd content. */
+@media (max-width: 640px) {
+  .shape {
+    opacity: 0.35;
+  }
+}

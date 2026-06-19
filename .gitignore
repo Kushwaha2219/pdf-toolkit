@@ -1,0 +1,23 @@
+# Python
+backend/venv/
+**/__pycache__/
+*.pyc
+
+# Node
+frontend/node_modules/
+
+# Build output (regenerated during deploy)
+backend/static/
+
+# Runtime scratch dirs (auto-created)
+backend/uploads/
+backend/outputs/
+
+# Secrets / environment
+backend/.env
+.env
+*.env
+
+# Local certs / logs
+backend/certs/
+*.log

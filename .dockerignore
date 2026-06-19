@@ -1,0 +1,11 @@
+**/venv
+**/node_modules
+**/__pycache__
+**/*.pyc
+backend/uploads
+backend/outputs
+backend/static
+backend/certs
+.git
+.gitignore
+*.log
