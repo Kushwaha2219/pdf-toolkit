@@ -23,6 +23,11 @@ export default function Login() {
       await login(form.email, form.password)
       navigate(redirectTo, { replace: true })
     } catch (err) {
+      // Unverified account — send them to enter their code rather than erroring.
+      if (err.data?.needs_verification) {
+        navigate('/verify-email', { state: { email: err.data.email || form.email } })
+        return
+      }
       setError(err.message)
     } finally {
       setBusy(false)

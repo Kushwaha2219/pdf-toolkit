@@ -71,7 +71,10 @@ export async function postJson(endpoint, body, token) {
 
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error(data?.error || `Request failed (${res.status})`)
+    const err = new Error(data?.error || `Request failed (${res.status})`)
+    err.status = res.status
+    err.data = data // exposes flags like needs_verification to callers
+    throw err
   }
   return data
 }
@@ -84,7 +87,10 @@ export async function getJson(endpoint, token) {
   const res = await fetch(`${API_BASE}${endpoint}`, { headers })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error(data?.error || `Request failed (${res.status})`)
+    const err = new Error(data?.error || `Request failed (${res.status})`)
+    err.status = res.status
+    err.data = data
+    throw err
   }
   return data
 }

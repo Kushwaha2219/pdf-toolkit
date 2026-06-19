@@ -21,11 +21,18 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
+    # Email verification: accounts start unverified and cannot log in until a
+    # 6-digit code emailed at signup is confirmed.
+    is_verified = db.Column(db.Boolean, default=False, nullable=False)
+    verification_code = db.Column(db.String(6), nullable=True)
+    verification_expires = db.Column(db.DateTime, nullable=True)
+
     def to_dict(self):
         """Public representation — never includes the password hash."""
         return {
             "id": self.id,
             "name": self.name,
             "email": self.email,
+            "is_verified": self.is_verified,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

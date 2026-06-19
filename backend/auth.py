@@ -11,6 +11,7 @@ mobile app, since the token can be stored on-device and sent as a header.
 """
 
 import re
+import secrets
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
@@ -19,12 +20,31 @@ from flask import Blueprint, current_app, g, jsonify, request
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from models import User, db
+from utils.mailer import email_configured, send_email, verification_email_html
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 TOKEN_TTL = timedelta(days=7)
 RESET_TTL = timedelta(minutes=30)
+VERIFY_TTL = timedelta(minutes=15)
+
+
+def _set_verification_code(user):
+    """Generate a fresh 6-digit code on the user and return it."""
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    user.verification_code = code
+    user.verification_expires = datetime.utcnow() + VERIFY_TTL
+    return code
+
+
+def _send_verification(user, code):
+    """Email the code via Resend. Returns True if the email was sent."""
+    return send_email(
+        user.email,
+        "Your PDFVish verification code",
+        verification_email_html(user.name, code),
+    )
 
 
 def _make_token(user):
@@ -90,18 +110,84 @@ def signup():
     if len(password) < 8:
         return jsonify(error="Password must be at least 8 characters."), 400
 
-    if User.query.filter_by(email=email).first():
+    existing = User.query.filter_by(email=email).first()
+    if existing and existing.is_verified:
         return jsonify(error="An account with this email already exists."), 409
 
-    user = User(
-        name=name,
-        email=email,
-        password_hash=generate_password_hash(password),
-    )
-    db.session.add(user)
+    # Reuse an unverified record if they're signing up again with the same email.
+    user = existing or User(email=email)
+    user.name = name
+    user.password_hash = generate_password_hash(password)
+    user.is_verified = False
+    code = _set_verification_code(user)
+
+    if not existing:
+        db.session.add(user)
     db.session.commit()
 
-    return jsonify(token=_make_token(user), user=user.to_dict()), 201
+    sent = _send_verification(user, code)
+    if not sent and not current_app.config.get("AUTH_DEV_MODE"):
+        return jsonify(
+            error="Could not send the verification email. Please try again later."
+        ), 502
+
+    # No token yet — the account isn't usable until the email is verified.
+    resp = {
+        "message": "We've sent a 6-digit verification code to your email.",
+        "email": email,
+        "needs_verification": True,
+    }
+    # DEV ONLY: surface the code when email delivery isn't configured, so the
+    # flow can be tested without a Resend key.
+    if not sent and current_app.config.get("AUTH_DEV_MODE"):
+        resp["dev_code"] = code
+    return jsonify(resp), 201
+
+
+@auth_bp.route("/verify", methods=["POST"])
+def verify_email():
+    """Confirm a 6-digit code and, on success, log the user in (returns token)."""
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    code = (data.get("code") or "").strip()
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify(error="No account found for that email."), 404
+    if user.is_verified:
+        return jsonify(token=_make_token(user), user=user.to_dict())
+    if not user.verification_code or not user.verification_expires:
+        return jsonify(error="No pending verification. Please sign up again."), 400
+    if datetime.utcnow() > user.verification_expires:
+        return jsonify(error="This code has expired. Request a new one."), 400
+    if not secrets.compare_digest(code, user.verification_code):
+        return jsonify(error="Incorrect code. Please check and try again."), 400
+
+    user.is_verified = True
+    user.verification_code = None
+    user.verification_expires = None
+    db.session.commit()
+
+    return jsonify(token=_make_token(user), user=user.to_dict())
+
+
+@auth_bp.route("/resend", methods=["POST"])
+def resend_code():
+    """Resend a verification code. Generic response to avoid email enumeration."""
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+
+    resp = {"message": "If that account needs verification, a new code has been sent."}
+
+    user = User.query.filter_by(email=email).first()
+    if user and not user.is_verified:
+        code = _set_verification_code(user)
+        db.session.commit()
+        sent = _send_verification(user, code)
+        if not sent and current_app.config.get("AUTH_DEV_MODE"):
+            resp["dev_code"] = code
+
+    return jsonify(resp)
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -114,6 +200,13 @@ def login():
     if not user or not check_password_hash(user.password_hash, password):
         # Same message for both cases — don't reveal which emails exist.
         return jsonify(error="Invalid email or password."), 401
+
+    if not user.is_verified:
+        return jsonify(
+            error="Please verify your email before logging in.",
+            needs_verification=True,
+            email=user.email,
+        ), 403
 
     return jsonify(token=_make_token(user), user=user.to_dict())
 

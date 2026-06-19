@@ -50,15 +50,19 @@ export function AuthProvider({ children }) {
     return u
   }
 
-  const signup = async (name, email, password) => {
-    const { token: t, user: u } = await postJson('/auth/signup', {
-      name,
-      email,
-      password,
-    })
+  // Signup no longer logs the user in — it triggers a verification email and
+  // returns the server response (e.g. { needs_verification, email, dev_code }).
+  const signup = (name, email, password) =>
+    postJson('/auth/signup', { name, email, password })
+
+  // Confirm the emailed 6-digit code; on success the user is logged in.
+  const verifyEmail = async (email, code) => {
+    const { token: t, user: u } = await postJson('/auth/verify', { email, code })
     persist(t, u)
     return u
   }
+
+  const resendCode = (email) => postJson('/auth/resend', { email })
 
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY)
@@ -79,6 +83,8 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     login,
     signup,
+    verifyEmail,
+    resendCode,
     logout,
     forgotPassword,
     resetPassword,

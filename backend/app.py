@@ -127,6 +127,40 @@ db.init_app(app)
 app.register_blueprint(auth_bp)
 
 
+def _ensure_user_columns():
+    """Add email-verification columns to an existing `users` table if missing.
+
+    create_all() only creates new tables; it never alters existing ones. Since
+    the table may predate the verification feature, we add the columns here.
+    Works on both SQLite and MySQL (plain ADD COLUMN, no IF NOT EXISTS).
+    """
+    from sqlalchemy import inspect as sa_inspect, text
+
+    inspector = sa_inspect(db.engine)
+    if "users" not in inspector.get_table_names():
+        return  # create_all() will have made it with all columns already
+
+    existing = {col["name"] for col in inspector.get_columns("users")}
+    additions = {
+        "is_verified": "ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT 0",
+        "verification_code": "ALTER TABLE users ADD COLUMN verification_code VARCHAR(6)",
+        "verification_expires": "ALTER TABLE users ADD COLUMN verification_expires DATETIME",
+    }
+    added = []
+    for column, sql in additions.items():
+        if column not in existing:
+            db.session.execute(text(sql))
+            added.append(column)
+
+    if added:
+        # Grandfather in any pre-existing accounts so the new rule doesn't lock
+        # them out (they were created before verification existed).
+        if "is_verified" in added:
+            db.session.execute(text("UPDATE users SET is_verified = 1"))
+        db.session.commit()
+        print(f"[auth] Added verification columns: {', '.join(added)}")
+
+
 def _init_database():
     """Create the database (if needed) and all tables on startup."""
     try:
@@ -162,6 +196,7 @@ def _init_database():
 
         with app.app_context():
             db.create_all()
+            _ensure_user_columns()
         print(f"[auth] Database ready ({DB_ENGINE}).")
     except Exception as exc:  # noqa: BLE001 — surface config issues, keep app up
         print(

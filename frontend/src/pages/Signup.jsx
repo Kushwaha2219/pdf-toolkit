@@ -24,8 +24,11 @@ export default function Signup() {
 
     setBusy(true)
     try {
-      await signup(form.name, form.email, form.password)
-      navigate('/', { replace: true })
+      const res = await signup(form.name, form.email, form.password)
+      // Account created but not yet usable — go enter the emailed code.
+      navigate('/verify-email', {
+        state: { email: form.email, devCode: res?.dev_code },
+      })
     } catch (err) {
       setError(err.message)
     } finally {
