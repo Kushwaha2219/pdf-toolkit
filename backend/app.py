@@ -7,6 +7,7 @@ results to ./outputs, and nothing leaves the box.
 import json
 import os
 import shutil
+import ssl as ssl_lib
 import tempfile
 import uuid
 from urllib.parse import quote_plus
@@ -78,11 +79,43 @@ if DB_ENGINE == "mysql":
 else:
     DB_URI = "sqlite:///" + os.path.join(BASE_DIR, "users.db")
 
+
+def _mysql_connect_args():
+    """TLS settings for connecting to a (usually hosted) MySQL server.
+
+    Most managed MySQL providers require an encrypted connection, so SSL is on
+    by default for MySQL. Two modes:
+
+      * MYSQL_SSL_CA set (path to the provider's CA cert, e.g. a Render secret
+        file at /etc/secrets/ca.pem) -> full TLS with certificate verification.
+      * No CA provided but MYSQL_SSL=true (default) -> encrypt the connection
+        without verifying the cert. Connects to any provider out of the box;
+        set a CA later to harden it.
+
+    Set MYSQL_SSL=false to disable TLS entirely (e.g. a local MySQL).
+    """
+    ca = os.environ.get("MYSQL_SSL_CA")
+    use_ssl = os.environ.get("MYSQL_SSL", "true").lower() == "true"
+    if ca:
+        return {"ssl": {"ca": ca}}
+    if use_ssl:
+        ctx = ssl_lib.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl_lib.CERT_NONE
+        return {"ssl": ctx}
+    return {}
+
 app = Flask(__name__, static_folder=None)
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 app.config["SQLALCHEMY_DATABASE_URI"] = DB_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+# pool_pre_ping recycles connections that a hosted DB silently dropped while
+# idle (avoids "MySQL server has gone away"). For MySQL, also pass TLS args.
+_engine_options = {"pool_pre_ping": True}
+if DB_ENGINE == "mysql":
+    _engine_options["connect_args"] = _mysql_connect_args()
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = _engine_options
 # When true, password-reset links are returned in the API response (for local
 # testing). Set AUTH_DEV_MODE=false in production once email delivery is wired.
 app.config["AUTH_DEV_MODE"] = (
@@ -110,6 +143,7 @@ def _init_database():
                     port=int(DB_PORT),
                     user=DB_USER,
                     password=DB_PASSWORD,
+                    **_mysql_connect_args(),
                 )
                 try:
                     with conn.cursor() as cur:
