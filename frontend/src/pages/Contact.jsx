@@ -37,9 +37,7 @@ export default function Contact() {
         <div className={styles.info}>
           <div className={styles.infoItem}>
             <span className={styles.infoLabel}>Email</span>
-            <a href="mailto:support@pdfvish.com" className={styles.infoValue}>
-              support@pdfvish.com
-            </a>
+            <span className={styles.infoValue}>support@pdfvish.com</span>
           </div>
           <div className={styles.infoItem}>
             <span className={styles.infoLabel}>Support hours</span>
