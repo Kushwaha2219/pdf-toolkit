@@ -71,13 +71,6 @@ export function AuthProvider({ children }) {
 
   const resendCode = (email) => postJson('/auth/resend', { email })
 
-  // Save the user's chosen plan (e.g. "free") and update local state.
-  const selectPlan = async (plan) => {
-    const { user: u } = await postJson('/auth/plan', { plan }, token)
-    setUser(u)
-    return u
-  }
-
   // --- Account settings ---
   const updateProfile = async (fields) => {
     const { user: u } = await postJson('/auth/profile', fields, token)
@@ -131,7 +124,6 @@ export function AuthProvider({ children }) {
     verifyEmail,
     loginWithGoogle,
     resendCode,
-    selectPlan,
     updateProfile,
     changePassword,
     changeEmail,

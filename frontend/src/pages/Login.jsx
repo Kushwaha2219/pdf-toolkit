@@ -21,9 +21,8 @@ export default function Login() {
     setError('')
     setBusy(true)
     try {
-      const u = await login(form.email, form.password)
-      // First login with no plan yet -> let them pick one.
-      navigate(u?.plan ? redirectTo : '/pricing', { replace: true })
+      await login(form.email, form.password)
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       // Unverified account — send them to enter their code rather than erroring.
       if (err.data?.needs_verification) {
@@ -39,8 +38,8 @@ export default function Login() {
   const onGoogle = async (credential) => {
     setError('')
     try {
-      const u = await loginWithGoogle(credential)
-      navigate(u?.plan ? redirectTo : '/pricing', { replace: true })
+      await loginWithGoogle(credential)
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       setError(err.message)
     }

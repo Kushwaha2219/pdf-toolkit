@@ -77,7 +77,6 @@ const LINK_COLUMNS = [
     links: [
       { label: 'Home', to: '/' },
       { label: 'Features', to: '/features' },
-      { label: 'Pricing', to: '/pricing' },
       { label: 'Tools', to: '/' },
       { label: 'FAQ', to: '/faq' },
     ],

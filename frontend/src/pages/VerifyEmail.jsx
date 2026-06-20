@@ -38,9 +38,8 @@ export default function VerifyEmail() {
     setError('')
     setBusy(true)
     try {
-      const u = await verifyEmail(email, code.trim())
-      // New account -> go choose a plan before landing on the app.
-      navigate(u?.plan ? '/' : '/pricing', { replace: true })
+      await verifyEmail(email, code.trim())
+      navigate('/', { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {

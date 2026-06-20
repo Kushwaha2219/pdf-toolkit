@@ -15,7 +15,6 @@ import Annotate from './pages/Annotate.jsx'
 import Sign from './pages/Sign.jsx'
 import FAQ from './pages/FAQ.jsx'
 import Features from './pages/Features.jsx'
-import Pricing from './pages/Pricing.jsx'
 import About from './pages/About.jsx'
 import Contact from './pages/Contact.jsx'
 import Login from './pages/Login.jsx'
@@ -56,7 +55,6 @@ export default function App() {
           <Route path="/sign" element={<Sign />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/features" element={<Features />} />
-          <Route path="/pricing" element={<Pricing />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />

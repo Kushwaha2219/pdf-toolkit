@@ -40,9 +40,8 @@ export default function Signup() {
   const onGoogle = async (credential) => {
     setError('')
     try {
-      const u = await loginWithGoogle(credential)
-      // New Google users have no plan yet -> send them to choose one.
-      navigate(u?.plan ? '/' : '/pricing', { replace: true })
+      await loginWithGoogle(credential)
+      navigate('/', { replace: true })
     } catch (err) {
       setError(err.message)
     }
