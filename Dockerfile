@@ -42,6 +42,9 @@ COPY --from=frontend /app/backend/static ./static
 
 # Render/Railway inject $PORT; default to 8000 for local `docker run`.
 ENV PORT=8000
+# Flush stdout/stderr immediately so app logs (e.g. [auth] ...) show up in
+# Render's log view instead of being buffered.
+ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
 
 # Production WSGI server. --timeout 180 gives slow PDF conversions room;
