@@ -26,9 +26,14 @@ import urllib.error
 import urllib.request
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import parseaddr
 
+BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email"
 RESEND_ENDPOINT = "https://api.resend.com/emails"
 DEFAULT_SENDER = "PDFVish <onboarding@resend.dev>"
+# A normal User-Agent avoids Cloudflare bot checks (the default Python-urllib UA
+# can trigger a 403/1010 block on API gateways).
+USER_AGENT = "PDFVish/1.0"
 
 
 def _smtp_configured():
@@ -36,8 +41,12 @@ def _smtp_configured():
 
 
 def email_configured():
-    """True if any email backend (SMTP or Resend) is configured."""
-    return _smtp_configured() or bool(os.environ.get("RESEND_API_KEY"))
+    """True if any email backend (Brevo, SMTP or Resend) is configured."""
+    return (
+        bool(os.environ.get("BREVO_API_KEY"))
+        or _smtp_configured()
+        or bool(os.environ.get("RESEND_API_KEY"))
+    )
 
 
 def _send_via_smtp(to_address, subject, html):
@@ -71,6 +80,49 @@ def _send_via_smtp(to_address, subject, html):
         return False
 
 
+def _send_via_brevo(to_address, subject, html):
+    """Send through the Brevo (Sendinblue) HTTP API. Returns True on success.
+
+    Works over HTTPS, so it isn't blocked by Render's SMTP firewall. The sender
+    address (from MAIL_FROM) must be a verified sender in your Brevo account.
+    """
+    api_key = os.environ.get("BREVO_API_KEY")
+    if not api_key:
+        return False
+
+    sender_name, sender_email = parseaddr(os.environ.get("MAIL_FROM", DEFAULT_SENDER))
+    payload = json.dumps(
+        {
+            "sender": {"name": sender_name or "PDFVish", "email": sender_email},
+            "to": [{"email": to_address}],
+            "subject": subject,
+            "htmlContent": html,
+        }
+    ).encode("utf-8")
+
+    req = urllib.request.Request(
+        BREVO_ENDPOINT,
+        data=payload,
+        method="POST",
+        headers={
+            "api-key": api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": USER_AGENT,
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return 200 <= resp.status < 300
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", "replace")
+        print(f"[auth] Brevo rejected email ({exc.code}): {detail}")
+        return False
+    except urllib.error.URLError as exc:
+        print(f"[auth] Could not reach Brevo: {exc}")
+        return False
+
+
 def _send_via_resend(to_address, subject, html):
     """Send through the Resend API. Returns True on success."""
     api_key = os.environ.get("RESEND_API_KEY")
@@ -89,6 +141,7 @@ def _send_via_resend(to_address, subject, html):
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
         },
     )
     try:
@@ -104,7 +157,13 @@ def _send_via_resend(to_address, subject, html):
 
 
 def send_email(to_address, subject, html):
-    """Send one HTML email via the first configured backend. Returns True if sent."""
+    """Send one HTML email via the first configured backend. Returns True if sent.
+
+    Order: Brevo (HTTP) -> SMTP -> Resend (HTTP). Brevo/Resend use HTTPS so they
+    work on hosts like Render that block outbound SMTP ports.
+    """
+    if os.environ.get("BREVO_API_KEY"):
+        return _send_via_brevo(to_address, subject, html)
     if _smtp_configured():
         return _send_via_smtp(to_address, subject, html)
     if os.environ.get("RESEND_API_KEY"):
