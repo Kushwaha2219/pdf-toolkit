@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import GoogleButton from '../components/GoogleButton.jsx'
 import styles from './Auth.module.css'
 
 export default function Login() {
-  const { login } = useAuth()
+  const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const redirectTo = location.state?.from || '/'
@@ -32,6 +33,16 @@ export default function Login() {
       setError(err.message)
     } finally {
       setBusy(false)
+    }
+  }
+
+  const onGoogle = async (credential) => {
+    setError('')
+    try {
+      const u = await loginWithGoogle(credential)
+      navigate(u?.plan ? redirectTo : '/pricing', { replace: true })
+    } catch (err) {
+      setError(err.message)
     }
   }
 
@@ -78,6 +89,11 @@ export default function Login() {
             {busy ? 'Logging in…' : 'Log in'}
           </button>
         </form>
+
+        <div className={styles.orDivider}>
+          <span>or</span>
+        </div>
+        <GoogleButton onCredential={onGoogle} onError={setError} />
 
         <p className={styles.switch}>
           Don’t have an account? <Link to="/signup">Sign up</Link>

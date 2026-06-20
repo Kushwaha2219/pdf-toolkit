@@ -62,6 +62,13 @@ export function AuthProvider({ children }) {
     return u
   }
 
+  // Log in / sign up with a Google ID token obtained in the browser.
+  const loginWithGoogle = async (credential) => {
+    const { token: t, user: u } = await postJson('/auth/google', { credential })
+    persist(t, u)
+    return u
+  }
+
   const resendCode = (email) => postJson('/auth/resend', { email })
 
   // Save the user's chosen plan (e.g. "free") and update local state.
@@ -91,6 +98,7 @@ export function AuthProvider({ children }) {
     login,
     signup,
     verifyEmail,
+    loginWithGoogle,
     resendCode,
     selectPlan,
     logout,

@@ -96,6 +96,27 @@
   text-decoration: underline;
 }
 
+.orDivider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin: 1.25rem 0;
+}
+
+.orDivider::before,
+.orDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.orDivider span {
+  padding: 0 0.75rem;
+}
+
 .switch {
   margin: 1.25rem 0 0;
   text-align: center;

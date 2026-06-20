@@ -10,6 +10,7 @@ are stateless JWTs signed with the app SECRET_KEY — a good fit for the planned
 mobile app, since the token can be stored on-device and sent as a header.
 """
 
+import os
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -294,3 +295,85 @@ def choose_plan():
     g.current_user.plan = plan
     db.session.commit()
     return jsonify(user=g.current_user.to_dict())
+
+
+# --------------------------------------------------------------------------- #
+# Social login (Google)
+# --------------------------------------------------------------------------- #
+GOOGLE_CERTS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+GOOGLE_ISSUERS = {"https://accounts.google.com", "accounts.google.com"}
+_google_jwks = None  # lazily-created PyJWKClient (caches Google's public keys)
+
+
+def _find_or_create_oauth_user(email, name):
+    """Find a user by email or create one for a social login (no password)."""
+    email = (email or "").strip().lower()
+    user = User.query.filter_by(email=email).first()
+    if user:
+        if not user.is_verified:  # provider already verified the email
+            user.is_verified = True
+            db.session.commit()
+        return user
+
+    user = User(
+        name=(name or email.split("@")[0]).strip(),
+        email=email,
+        # Social accounts have no usable password; store a random hash so the
+        # column stays populated. They can use "forgot password" to set one.
+        password_hash=generate_password_hash(secrets.token_urlsafe(32)),
+        is_verified=True,
+    )
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+def _verify_google_token(credential):
+    """Verify a Google ID token and return its claims (raises ValueError)."""
+    global _google_jwks
+    client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    if not client_id:
+        raise ValueError("Google login isn't configured on the server.")
+
+    if _google_jwks is None:
+        _google_jwks = jwt.PyJWKClient(GOOGLE_CERTS_URL)
+
+    signing_key = _google_jwks.get_signing_key_from_jwt(credential)
+    claims = jwt.decode(
+        credential,
+        signing_key.key,
+        algorithms=["RS256"],
+        audience=client_id,
+    )
+    if claims.get("iss") not in GOOGLE_ISSUERS:
+        raise ValueError("Invalid token issuer.")
+    if not claims.get("email"):
+        raise ValueError("This Google account has no email address.")
+    if not claims.get("email_verified", False):
+        raise ValueError("This Google email isn't verified.")
+    return claims
+
+
+@auth_bp.route("/config", methods=["GET"])
+def auth_config():
+    """Public config the frontend needs to render social-login buttons."""
+    return jsonify(google_client_id=os.environ.get("GOOGLE_CLIENT_ID", ""))
+
+
+@auth_bp.route("/google", methods=["POST"])
+def google_login():
+    """Log in / sign up with a Google ID token from the browser."""
+    data = request.get_json(silent=True) or {}
+    credential = (data.get("credential") or "").strip()
+    if not credential:
+        return jsonify(error="Missing Google credential."), 400
+
+    try:
+        claims = _verify_google_token(credential)
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    except jwt.InvalidTokenError:
+        return jsonify(error="Could not verify Google sign-in. Please try again."), 401
+
+    user = _find_or_create_oauth_user(claims.get("email"), claims.get("name"))
+    return jsonify(token=_make_token(user), user=user.to_dict())
