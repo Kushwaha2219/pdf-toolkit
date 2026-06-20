@@ -31,6 +31,13 @@ class User(db.Model):
     # then "free" (Pro/Enterprise are not selectable until payments exist).
     plan = db.Column(db.String(20), nullable=True)
 
+    # Profile details (set in Account Settings).
+    country = db.Column(db.String(80), nullable=True)
+    timezone = db.Column(db.String(64), nullable=True)
+
+    # Whether a Google account is linked for social sign-in.
+    google_linked = db.Column(db.Boolean, default=False, nullable=False)
+
     def to_dict(self):
         """Public representation — never includes the password hash."""
         return {
@@ -39,5 +46,8 @@ class User(db.Model):
             "email": self.email,
             "is_verified": self.is_verified,
             "plan": self.plan,
+            "country": self.country,
+            "timezone": self.timezone,
+            "google_linked": self.google_linked,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

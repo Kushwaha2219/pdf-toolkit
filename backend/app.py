@@ -146,6 +146,9 @@ def _ensure_user_columns():
         "verification_code": "ALTER TABLE users ADD COLUMN verification_code VARCHAR(6)",
         "verification_expires": "ALTER TABLE users ADD COLUMN verification_expires DATETIME",
         "plan": "ALTER TABLE users ADD COLUMN plan VARCHAR(20)",
+        "country": "ALTER TABLE users ADD COLUMN country VARCHAR(80)",
+        "timezone": "ALTER TABLE users ADD COLUMN timezone VARCHAR(64)",
+        "google_linked": "ALTER TABLE users ADD COLUMN google_linked BOOLEAN NOT NULL DEFAULT 0",
     }
     added = []
     for column, sql in additions.items():

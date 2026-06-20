@@ -1,0 +1,304 @@
+import { useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
+import GoogleButton from '../components/GoogleButton.jsx'
+import styles from './Page.module.css'
+
+const COUNTRIES = [
+  'Australia', 'Bangladesh', 'Brazil', 'Canada', 'China', 'France', 'Germany',
+  'India', 'Indonesia', 'Ireland', 'Italy', 'Japan', 'Malaysia', 'Mexico',
+  'Nepal', 'Netherlands', 'New Zealand', 'Pakistan', 'Philippines', 'Poland',
+  'Saudi Arabia', 'Singapore', 'South Africa', 'South Korea', 'Spain',
+  'Sri Lanka', 'Sweden', 'Switzerland', 'United Arab Emirates',
+  'United Kingdom', 'United States', 'Other',
+]
+
+function timezoneList() {
+  try {
+    if (typeof Intl.supportedValuesOf === 'function') {
+      return Intl.supportedValuesOf('timeZone')
+    }
+  } catch {
+    /* older browser — fall back to a short list */
+  }
+  return [
+    'UTC', 'America/New_York', 'America/Los_Angeles', 'Europe/London',
+    'Europe/Berlin', 'Asia/Kolkata', 'Asia/Dubai', 'Asia/Tokyo',
+    'Australia/Sydney',
+  ]
+}
+
+function Message({ ok, text }) {
+  if (!text) return null
+  return (
+    <p
+      style={{
+        margin: '0.75rem 0 0',
+        fontSize: '0.88rem',
+        color: ok ? '#0f7a57' : 'var(--danger)',
+      }}
+    >
+      {text}
+    </p>
+  )
+}
+
+const sectionTitle = { margin: '0 0 0.25rem', fontSize: '1.1rem' }
+const sectionDesc = { margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.88rem' }
+const cardGap = { marginTop: '1.5rem' }
+
+export default function AccountSettings() {
+  const {
+    user, updateProfile, changePassword, changeEmail, linkGoogle, unlinkGoogle,
+  } = useAuth()
+  const navigate = useNavigate()
+  const tzList = useMemo(timezoneList, [])
+
+  const [details, setDetails] = useState({
+    name: user?.name || '',
+    country: user?.country || '',
+    timezone: user?.timezone || '',
+  })
+  const [detailsState, setDetailsState] = useState({ busy: false, msg: '', ok: false })
+
+  const [pwd, setPwd] = useState({ current: '', next: '' })
+  const [pwdState, setPwdState] = useState({ busy: false, msg: '', ok: false })
+
+  const [emailForm, setEmailForm] = useState({ password: '', newEmail: '' })
+  const [emailState, setEmailState] = useState({ busy: false, msg: '', ok: false })
+
+  const [linkState, setLinkState] = useState({ msg: '', ok: false })
+
+  if (!user) {
+    return (
+      <div className={styles.page}>
+        <p>
+          Please <Link to="/login">log in</Link> to manage your account.
+        </p>
+      </div>
+    )
+  }
+
+  const saveDetails = async (e) => {
+    e.preventDefault()
+    setDetailsState({ busy: true, msg: '', ok: false })
+    try {
+      await updateProfile(details)
+      setDetailsState({ busy: false, msg: 'Details saved.', ok: true })
+    } catch (err) {
+      setDetailsState({ busy: false, msg: err.message, ok: false })
+    }
+  }
+
+  const savePassword = async (e) => {
+    e.preventDefault()
+    setPwdState({ busy: true, msg: '', ok: false })
+    try {
+      await changePassword(pwd.current, pwd.next)
+      setPwd({ current: '', next: '' })
+      setPwdState({ busy: false, msg: 'Password updated.', ok: true })
+    } catch (err) {
+      setPwdState({ busy: false, msg: err.message, ok: false })
+    }
+  }
+
+  const saveEmail = async (e) => {
+    e.preventDefault()
+    setEmailState({ busy: true, msg: '', ok: false })
+    try {
+      const res = await changeEmail(emailForm.password, emailForm.newEmail)
+      // New email must be verified — send them to the code screen.
+      navigate('/verify-email', {
+        state: { email: emailForm.newEmail, devCode: res?.dev_code },
+      })
+    } catch (err) {
+      setEmailState({ busy: false, msg: err.message, ok: false })
+    }
+  }
+
+  const onLinkGoogle = async (credential) => {
+    setLinkState({ msg: '', ok: false })
+    try {
+      await linkGoogle(credential)
+      setLinkState({ msg: 'Google account linked.', ok: true })
+    } catch (err) {
+      setLinkState({ msg: err.message, ok: false })
+    }
+  }
+
+  const onUnlinkGoogle = async () => {
+    try {
+      await unlinkGoogle()
+      setLinkState({ msg: 'Google account unlinked.', ok: true })
+    } catch (err) {
+      setLinkState({ msg: err.message, ok: false })
+    }
+  }
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <div className={styles.icon}>⚙️</div>
+        <h1 className={styles.title}>Account settings</h1>
+        <p className={styles.subtitle}>Manage your profile, email and security.</p>
+      </header>
+
+      {/* --- Details --- */}
+      <form className={styles.card} onSubmit={saveDetails}>
+        <h2 style={sectionTitle}>Details</h2>
+        <p style={sectionDesc}>Your name and regional preferences.</p>
+
+        <div className={styles.field}>
+          <label className={styles.label}>Name</label>
+          <input
+            className={styles.select}
+            type="text"
+            value={details.name}
+            onChange={(e) => setDetails({ ...details, name: e.target.value })}
+            required
+          />
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.label}>Country</label>
+          <select
+            className={styles.select}
+            value={details.country}
+            onChange={(e) => setDetails({ ...details, country: e.target.value })}
+          >
+            <option value="">— Select —</option>
+            {COUNTRIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.label}>Timezone</label>
+          <select
+            className={styles.select}
+            value={details.timezone}
+            onChange={(e) => setDetails({ ...details, timezone: e.target.value })}
+          >
+            <option value="">— Select —</option>
+            {tzList.map((tz) => (
+              <option key={tz} value={tz}>{tz}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.actions}>
+          <button type="submit" className="btn" disabled={detailsState.busy}>
+            {detailsState.busy ? 'Saving…' : 'Save details'}
+          </button>
+        </div>
+        <Message ok={detailsState.ok} text={detailsState.msg} />
+      </form>
+
+      {/* --- Email --- */}
+      <form className={styles.card} style={cardGap} onSubmit={saveEmail}>
+        <h2 style={sectionTitle}>Email</h2>
+        <p style={sectionDesc}>
+          Current: <strong>{user.email}</strong>. Changing it requires verifying
+          the new address.
+        </p>
+
+        <div className={styles.field}>
+          <label className={styles.label}>New email</label>
+          <input
+            className={styles.select}
+            type="email"
+            value={emailForm.newEmail}
+            onChange={(e) => setEmailForm({ ...emailForm, newEmail: e.target.value })}
+            placeholder="new@example.com"
+            required
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Current password</label>
+          <input
+            className={styles.select}
+            type="password"
+            value={emailForm.password}
+            onChange={(e) => setEmailForm({ ...emailForm, password: e.target.value })}
+            autoComplete="current-password"
+            required
+          />
+        </div>
+
+        <div className={styles.actions}>
+          <button type="submit" className="btn" disabled={emailState.busy}>
+            {emailState.busy ? 'Sending…' : 'Change email'}
+          </button>
+        </div>
+        <Message ok={emailState.ok} text={emailState.msg} />
+      </form>
+
+      {/* --- Password --- */}
+      <form className={styles.card} style={cardGap} onSubmit={savePassword}>
+        <h2 style={sectionTitle}>Password</h2>
+        <p style={sectionDesc}>
+          Choose a strong password. (Signed up with Google only? Use{' '}
+          <Link to="/forgot-password">forgot password</Link> to set one first.)
+        </p>
+
+        <div className={styles.field}>
+          <label className={styles.label}>Current password</label>
+          <input
+            className={styles.select}
+            type="password"
+            value={pwd.current}
+            onChange={(e) => setPwd({ ...pwd, current: e.target.value })}
+            autoComplete="current-password"
+            required
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>New password</label>
+          <input
+            className={styles.select}
+            type="password"
+            value={pwd.next}
+            onChange={(e) => setPwd({ ...pwd, next: e.target.value })}
+            placeholder="At least 8 characters"
+            autoComplete="new-password"
+            required
+          />
+        </div>
+
+        <div className={styles.actions}>
+          <button type="submit" className="btn" disabled={pwdState.busy}>
+            {pwdState.busy ? 'Updating…' : 'Update password'}
+          </button>
+        </div>
+        <Message ok={pwdState.ok} text={pwdState.msg} />
+      </form>
+
+      {/* --- Linked accounts --- */}
+      <div className={styles.card} style={cardGap}>
+        <h2 style={sectionTitle}>Linked accounts</h2>
+        <p style={sectionDesc}>Connect a social account for quick sign-in.</p>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 600 }}>
+            Google: {user.google_linked ? '✅ Connected' : 'Not connected'}
+          </span>
+          {user.google_linked ? (
+            <button type="button" className="btn btn-ghost" onClick={onUnlinkGoogle}>
+              Disconnect
+            </button>
+          ) : (
+            <GoogleButton
+              onCredential={onLinkGoogle}
+              onError={(m) => setLinkState({ msg: m, ok: false })}
+            />
+          )}
+        </div>
+        <p style={sectionDesc}>
+          Facebook: <em>coming soon</em>
+        </p>
+        <Message ok={linkState.ok} text={linkState.msg} />
+      </div>
+    </div>
+  )
+}

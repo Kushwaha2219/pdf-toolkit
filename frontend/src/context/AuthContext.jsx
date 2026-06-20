@@ -78,6 +78,37 @@ export function AuthProvider({ children }) {
     return u
   }
 
+  // --- Account settings ---
+  const updateProfile = async (fields) => {
+    const { user: u } = await postJson('/auth/profile', fields, token)
+    setUser(u)
+    return u
+  }
+
+  const changePassword = (currentPassword, newPassword) =>
+    postJson(
+      '/auth/change-password',
+      { current_password: currentPassword, new_password: newPassword },
+      token
+    )
+
+  // Returns the server response ({ needs_verification, email, ... }); the new
+  // email must be re-verified, so the caller routes to the verify page.
+  const changeEmail = (password, newEmail) =>
+    postJson('/auth/change-email', { password, new_email: newEmail }, token)
+
+  const linkGoogle = async (credential) => {
+    const { user: u } = await postJson('/auth/link-google', { credential }, token)
+    setUser(u)
+    return u
+  }
+
+  const unlinkGoogle = async () => {
+    const { user: u } = await postJson('/auth/unlink-google', {}, token)
+    setUser(u)
+    return u
+  }
+
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY)
     setToken(null)
@@ -101,6 +132,11 @@ export function AuthProvider({ children }) {
     loginWithGoogle,
     resendCode,
     selectPlan,
+    updateProfile,
+    changePassword,
+    changeEmail,
+    linkGoogle,
+    unlinkGoogle,
     logout,
     forgotPassword,
     resetPassword,

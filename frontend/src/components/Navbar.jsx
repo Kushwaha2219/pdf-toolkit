@@ -50,6 +50,15 @@ export default function Navbar() {
 
   const toggle = (menu) => setOpenMenu((cur) => (cur === menu ? null : menu))
 
+  // First letters of the user's name (max two) for the avatar.
+  const initials = (name) =>
+    (name || '?')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() || '')
+      .join('') || '?'
+
   const navLinkClass = ({ isActive }) =>
     isActive ? `${styles.link} ${styles.active}` : styles.link
 
@@ -156,14 +165,38 @@ export default function Navbar() {
                 otherwise a logged-in user sees a flash of Login/Signup on every
                 page refresh until /auth/me resolves. */}
             {loading ? null : isAuthenticated ? (
-              <>
-                <span className={styles.userName} title={user?.email}>
-                  {user?.name}
-                </span>
-                <button type="button" className={styles.login} onClick={logout}>
-                  Log out
+              <div className={styles.dropdown}>
+                <button
+                  type="button"
+                  className={styles.avatar}
+                  onClick={() => toggle('user')}
+                  aria-haspopup="true"
+                  aria-expanded={openMenu === 'user'}
+                  title={user?.name}
+                >
+                  {initials(user?.name)}
                 </button>
-              </>
+                {openMenu === 'user' && (
+                  <div className={styles.userMenu} role="menu">
+                    <div className={styles.userMenuHeader}>
+                      <span className={styles.userMenuName}>{user?.name}</span>
+                      <span className={styles.userMenuEmail}>{user?.email}</span>
+                    </div>
+                    <NavLink to="/account" className={styles.userMenuItem} role="menuitem">
+                      <span className={styles.menuIcon}>⚙️</span> Account settings
+                    </NavLink>
+                    <NavLink to="/signatures" className={styles.userMenuItem} role="menuitem">
+                      <span className={styles.menuIcon}>🖊️</span> Signatures
+                    </NavLink>
+                    <NavLink to="/files" className={styles.userMenuItem} role="menuitem">
+                      <span className={styles.menuIcon}>📁</span> Your files
+                    </NavLink>
+                    <button type="button" className={styles.userMenuItem} onClick={logout}>
+                      <span className={styles.menuIcon}>🚪</span> Log out
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 <Link to="/login" className={styles.login}>

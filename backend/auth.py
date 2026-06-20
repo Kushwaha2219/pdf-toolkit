@@ -392,3 +392,111 @@ def google_login():
 
     user = _find_or_create_oauth_user(claims.get("email"), claims.get("name"))
     return jsonify(token=_make_token(user), user=user.to_dict())
+
+
+# --------------------------------------------------------------------------- #
+# Account settings (all require a valid token)
+# --------------------------------------------------------------------------- #
+@auth_bp.route("/profile", methods=["POST"])
+@token_required
+def update_profile():
+    """Update name / country / timezone."""
+    data = request.get_json(silent=True) or {}
+    user = g.current_user
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify(error="Name is required."), 400
+    user.name = name
+    if "country" in data:
+        user.country = (data.get("country") or "").strip() or None
+    if "timezone" in data:
+        user.timezone = (data.get("timezone") or "").strip() or None
+
+    db.session.commit()
+    return jsonify(user=user.to_dict())
+
+
+@auth_bp.route("/change-password", methods=["POST"])
+@token_required
+def change_password():
+    data = request.get_json(silent=True) or {}
+    current = data.get("current_password") or ""
+    new = data.get("new_password") or ""
+    user = g.current_user
+
+    if not check_password_hash(user.password_hash, current):
+        return jsonify(error="Your current password is incorrect."), 400
+    if len(new) < 8:
+        return jsonify(error="New password must be at least 8 characters."), 400
+
+    user.password_hash = generate_password_hash(new)
+    db.session.commit()
+    return jsonify(message="Your password has been updated.")
+
+
+@auth_bp.route("/change-email", methods=["POST"])
+@token_required
+def change_email():
+    """Change email; the new address must be re-verified with a code."""
+    data = request.get_json(silent=True) or {}
+    password = data.get("password") or ""
+    new_email = (data.get("new_email") or "").strip().lower()
+    user = g.current_user
+
+    if not check_password_hash(user.password_hash, password):
+        return jsonify(error="Your password is incorrect."), 400
+    if not EMAIL_RE.match(new_email):
+        return jsonify(error="Please enter a valid email address."), 400
+    if new_email == user.email:
+        return jsonify(error="That's already your email address."), 400
+    if User.query.filter_by(email=new_email).first():
+        return jsonify(error="That email is already in use."), 409
+
+    user.email = new_email
+    user.is_verified = False
+    code = _set_verification_code(user)
+    db.session.commit()
+
+    sent = _send_verification(user, code)
+    resp = {
+        "message": "We've sent a verification code to your new email.",
+        "email": new_email,
+        "needs_verification": True,
+    }
+    if not sent and current_app.config.get("AUTH_DEV_MODE"):
+        resp["dev_code"] = code
+    return jsonify(resp)
+
+
+@auth_bp.route("/link-google", methods=["POST"])
+@token_required
+def link_google():
+    """Link a Google account (its email must match the logged-in account)."""
+    data = request.get_json(silent=True) or {}
+    credential = (data.get("credential") or "").strip()
+    if not credential:
+        return jsonify(error="Missing Google credential."), 400
+    try:
+        claims = _verify_google_token(credential)
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    except jwt.InvalidTokenError:
+        return jsonify(error="Could not verify Google sign-in."), 401
+
+    if (claims.get("email") or "").strip().lower() != g.current_user.email.lower():
+        return jsonify(
+            error="That Google account's email doesn't match your account email."
+        ), 400
+
+    g.current_user.google_linked = True
+    db.session.commit()
+    return jsonify(user=g.current_user.to_dict())
+
+
+@auth_bp.route("/unlink-google", methods=["POST"])
+@token_required
+def unlink_google():
+    g.current_user.google_linked = False
+    db.session.commit()
+    return jsonify(user=g.current_user.to_dict())

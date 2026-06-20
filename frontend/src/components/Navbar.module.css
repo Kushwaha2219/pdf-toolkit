@@ -223,6 +223,88 @@
   white-space: nowrap;
 }
 
+/* ---- User avatar + account dropdown ---- */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatar:hover {
+  filter: brightness(1.1);
+}
+
+.userMenu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 240px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+  animation: menuIn 0.12s ease;
+  z-index: 60;
+}
+
+.userMenuHeader {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.6rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.3rem;
+}
+
+.userMenuName {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.userMenuEmail {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 0.6rem;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.userMenuItem:hover {
+  background: var(--surface);
+}
+
 .login {
   background: none;
   border: 1px solid var(--border);
@@ -336,5 +418,17 @@
     max-width: none;
     text-align: center;
     padding: 0.3rem 0;
+  }
+
+  /* User dropdown renders inline (stacked) on mobile. */
+  .userMenu {
+    position: static;
+    min-width: 0;
+    width: 100%;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+    padding: 0.25rem 0;
+    animation: none;
   }
 }

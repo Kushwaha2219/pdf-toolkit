@@ -21,6 +21,9 @@ import Contact from './pages/Contact.jsx'
 import Login from './pages/Login.jsx'
 import Signup from './pages/Signup.jsx'
 import VerifyEmail from './pages/VerifyEmail.jsx'
+import AccountSettings from './pages/AccountSettings.jsx'
+import Signatures from './pages/Signatures.jsx'
+import YourFiles from './pages/YourFiles.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 
@@ -59,6 +62,9 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/account" element={<AccountSettings />} />
+          <Route path="/signatures" element={<Signatures />} />
+          <Route path="/files" element={<YourFiles />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
