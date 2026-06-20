@@ -26,6 +26,8 @@ class User(db.Model):
     is_verified = db.Column(db.Boolean, default=False, nullable=False)
     verification_code = db.Column(db.String(6), nullable=True)
     verification_expires = db.Column(db.DateTime, nullable=True)
+    # Wrong-code guesses for the current code; the code locks after a few.
+    verification_attempts = db.Column(db.Integer, default=0, nullable=False)
 
     # Chosen subscription plan: NULL until the user picks one after first login,
     # then "free" (Pro/Enterprise are not selectable until payments exist).

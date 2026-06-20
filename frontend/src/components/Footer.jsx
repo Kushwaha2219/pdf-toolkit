@@ -88,6 +88,13 @@ const LINK_COLUMNS = [
       { label: 'Contact Us', to: '/contact' },
     ],
   },
+  {
+    title: 'Legal',
+    links: [
+      { label: 'Privacy Policy', to: '/privacy' },
+      { label: 'Terms of Service', to: '/terms' },
+    ],
+  },
 ]
 
 function FooterLink({ to, label }) {

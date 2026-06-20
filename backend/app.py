@@ -22,10 +22,11 @@ from flask import (
     send_from_directory,
 )
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
 from models import db
-from auth import auth_bp
+from auth import auth_bp, limiter
 
 load_dotenv()
 
@@ -121,9 +122,22 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = _engine_options
 app.config["AUTH_DEV_MODE"] = (
     os.environ.get("AUTH_DEV_MODE", "true").lower() == "true"
 )
-CORS(app)
+
+# Behind Render's proxy: trust X-Forwarded-* so request.remote_addr is the real
+# client IP (needed for accurate rate limiting) and the scheme is https.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+# Restrict CORS to known origins. The frontend is served same-origin in
+# production, so this is just a safety net; set ALLOWED_ORIGINS (comma-separated)
+# to add others. Localhost is included for the Vite dev server.
+_allowed = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+if os.environ.get("APP_BASE_URL"):
+    _allowed.append(os.environ["APP_BASE_URL"].rstrip("/"))
+_allowed += ["http://localhost:3000", "http://localhost:5173"]
+CORS(app, resources={r"/api/*": {"origins": _allowed}})
 
 db.init_app(app)
+limiter.init_app(app)
 app.register_blueprint(auth_bp)
 
 
@@ -145,6 +159,7 @@ def _ensure_user_columns():
         "is_verified": "ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT 0",
         "verification_code": "ALTER TABLE users ADD COLUMN verification_code VARCHAR(6)",
         "verification_expires": "ALTER TABLE users ADD COLUMN verification_expires DATETIME",
+        "verification_attempts": "ALTER TABLE users ADD COLUMN verification_attempts INTEGER NOT NULL DEFAULT 0",
         "plan": "ALTER TABLE users ADD COLUMN plan VARCHAR(20)",
         "country": "ALTER TABLE users ADD COLUMN country VARCHAR(80)",
         "timezone": "ALTER TABLE users ADD COLUMN timezone VARCHAR(64)",
@@ -561,6 +576,11 @@ def api_sign():
 @app.errorhandler(413)
 def too_large(_e):
     return jsonify(error="File too large (100 MB limit)."), 413
+
+
+@app.errorhandler(429)
+def rate_limited(_e):
+    return jsonify(error="Too many requests. Please wait a minute and try again."), 429
 
 
 # --------------------------------------------------------------------------- #

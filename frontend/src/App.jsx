@@ -17,6 +17,8 @@ import FAQ from './pages/FAQ.jsx'
 import Features from './pages/Features.jsx'
 import About from './pages/About.jsx'
 import Contact from './pages/Contact.jsx'
+import Privacy from './pages/Privacy.jsx'
+import Terms from './pages/Terms.jsx'
 import Login from './pages/Login.jsx'
 import Signup from './pages/Signup.jsx'
 import VerifyEmail from './pages/VerifyEmail.jsx'
@@ -57,6 +59,8 @@ export default function App() {
           <Route path="/features" element={<Features />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/verify-email" element={<VerifyEmail />} />

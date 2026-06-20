@@ -18,6 +18,8 @@ from functools import wraps
 
 import jwt
 from flask import Blueprint, current_app, g, jsonify, request
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from models import User, db
@@ -30,6 +32,12 @@ from utils.mailer import (
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
+# Rate limiter — keyed by client IP. Initialised against the app in app.py.
+# Storage is in-memory by default (fine for a single small instance).
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
+
+MAX_VERIFY_ATTEMPTS = 5  # wrong code guesses before the code is invalidated
+
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 TOKEN_TTL = timedelta(days=7)
 RESET_TTL = timedelta(minutes=30)
@@ -41,6 +49,7 @@ def _set_verification_code(user):
     code = f"{secrets.randbelow(1_000_000):06d}"
     user.verification_code = code
     user.verification_expires = datetime.utcnow() + VERIFY_TTL
+    user.verification_attempts = 0
     return code
 
 
@@ -103,6 +112,7 @@ def token_required(fn):
 
 
 @auth_bp.route("/signup", methods=["POST"])
+@limiter.limit("5 per minute")
 def signup():
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
@@ -151,6 +161,7 @@ def signup():
 
 
 @auth_bp.route("/verify", methods=["POST"])
+@limiter.limit("15 per minute")
 def verify_email():
     """Confirm a 6-digit code and, on success, log the user in (returns token)."""
     data = request.get_json(silent=True) or {}
@@ -166,18 +177,30 @@ def verify_email():
         return jsonify(error="No pending verification. Please sign up again."), 400
     if datetime.utcnow() > user.verification_expires:
         return jsonify(error="This code has expired. Request a new one."), 400
+    if user.verification_attempts >= MAX_VERIFY_ATTEMPTS:
+        # Too many wrong guesses — invalidate the code so it must be re-sent.
+        user.verification_code = None
+        user.verification_expires = None
+        db.session.commit()
+        return jsonify(
+            error="Too many incorrect attempts. Please request a new code."
+        ), 429
     if not secrets.compare_digest(code, user.verification_code):
+        user.verification_attempts += 1
+        db.session.commit()
         return jsonify(error="Incorrect code. Please check and try again."), 400
 
     user.is_verified = True
     user.verification_code = None
     user.verification_expires = None
+    user.verification_attempts = 0
     db.session.commit()
 
     return jsonify(token=_make_token(user), user=user.to_dict())
 
 
 @auth_bp.route("/resend", methods=["POST"])
+@limiter.limit("3 per minute")
 def resend_code():
     """Resend a verification code. Generic response to avoid email enumeration."""
     data = request.get_json(silent=True) or {}
@@ -197,6 +220,7 @@ def resend_code():
 
 
 @auth_bp.route("/login", methods=["POST"])
+@limiter.limit("10 per minute")
 def login():
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip().lower()
@@ -218,6 +242,7 @@ def login():
 
 
 @auth_bp.route("/forgot", methods=["POST"])
+@limiter.limit("5 per minute")
 def forgot_password():
     """Begin a password reset.
 
@@ -256,6 +281,7 @@ def forgot_password():
 
 
 @auth_bp.route("/reset", methods=["POST"])
+@limiter.limit("5 per minute")
 def reset_password():
     """Complete a password reset with a valid reset token + new password."""
     data = request.get_json(silent=True) or {}
@@ -376,6 +402,7 @@ def auth_config():
 
 
 @auth_bp.route("/google", methods=["POST"])
+@limiter.limit("20 per minute")
 def google_login():
     """Log in / sign up with a Google ID token from the browser."""
     data = request.get_json(silent=True) or {}
@@ -419,6 +446,7 @@ def update_profile():
 
 @auth_bp.route("/change-password", methods=["POST"])
 @token_required
+@limiter.limit("10 per minute")
 def change_password():
     data = request.get_json(silent=True) or {}
     current = data.get("current_password") or ""
@@ -437,6 +465,7 @@ def change_password():
 
 @auth_bp.route("/change-email", methods=["POST"])
 @token_required
+@limiter.limit("10 per minute")
 def change_email():
     """Change email; the new address must be re-verified with a code."""
     data = request.get_json(silent=True) or {}
