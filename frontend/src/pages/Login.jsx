@@ -20,8 +20,9 @@ export default function Login() {
     setError('')
     setBusy(true)
     try {
-      await login(form.email, form.password)
-      navigate(redirectTo, { replace: true })
+      const u = await login(form.email, form.password)
+      // First login with no plan yet -> let them pick one.
+      navigate(u?.plan ? redirectTo : '/pricing', { replace: true })
     } catch (err) {
       // Unverified account — send them to enter their code rather than erroring.
       if (err.data?.needs_verification) {

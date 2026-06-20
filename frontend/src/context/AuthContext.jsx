@@ -64,6 +64,13 @@ export function AuthProvider({ children }) {
 
   const resendCode = (email) => postJson('/auth/resend', { email })
 
+  // Save the user's chosen plan (e.g. "free") and update local state.
+  const selectPlan = async (plan) => {
+    const { user: u } = await postJson('/auth/plan', { plan }, token)
+    setUser(u)
+    return u
+  }
+
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY)
     setToken(null)
@@ -85,6 +92,7 @@ export function AuthProvider({ children }) {
     signup,
     verifyEmail,
     resendCode,
+    selectPlan,
     logout,
     forgotPassword,
     resetPassword,

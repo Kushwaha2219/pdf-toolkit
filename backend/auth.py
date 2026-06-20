@@ -274,3 +274,23 @@ def reset_password():
 @token_required
 def me():
     return jsonify(user=g.current_user.to_dict())
+
+
+# Plans a user is allowed to select right now. Pro/Enterprise are "coming soon"
+# until online payments exist, so only "free" is selectable.
+SELECTABLE_PLANS = {"free"}
+
+
+@auth_bp.route("/plan", methods=["POST"])
+@token_required
+def choose_plan():
+    """Set the current user's plan (only 'free' is selectable for now)."""
+    data = request.get_json(silent=True) or {}
+    plan = (data.get("plan") or "").strip().lower()
+
+    if plan not in SELECTABLE_PLANS:
+        return jsonify(error="That plan isn't available yet."), 400
+
+    g.current_user.plan = plan
+    db.session.commit()
+    return jsonify(user=g.current_user.to_dict())

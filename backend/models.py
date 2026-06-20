@@ -27,6 +27,10 @@ class User(db.Model):
     verification_code = db.Column(db.String(6), nullable=True)
     verification_expires = db.Column(db.DateTime, nullable=True)
 
+    # Chosen subscription plan: NULL until the user picks one after first login,
+    # then "free" (Pro/Enterprise are not selectable until payments exist).
+    plan = db.Column(db.String(20), nullable=True)
+
     def to_dict(self):
         """Public representation — never includes the password hash."""
         return {
@@ -34,5 +38,6 @@ class User(db.Model):
             "name": self.name,
             "email": self.email,
             "is_verified": self.is_verified,
+            "plan": self.plan,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

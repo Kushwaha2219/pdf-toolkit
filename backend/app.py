@@ -145,6 +145,7 @@ def _ensure_user_columns():
         "is_verified": "ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT 0",
         "verification_code": "ALTER TABLE users ADD COLUMN verification_code VARCHAR(6)",
         "verification_expires": "ALTER TABLE users ADD COLUMN verification_expires DATETIME",
+        "plan": "ALTER TABLE users ADD COLUMN plan VARCHAR(20)",
     }
     added = []
     for column, sql in additions.items():
@@ -153,12 +154,14 @@ def _ensure_user_columns():
             added.append(column)
 
     if added:
-        # Grandfather in any pre-existing accounts so the new rule doesn't lock
-        # them out (they were created before verification existed).
+        # Grandfather in any pre-existing accounts so new rules don't lock them
+        # out (they were created before these features existed).
         if "is_verified" in added:
             db.session.execute(text("UPDATE users SET is_verified = 1"))
+        if "plan" in added:
+            db.session.execute(text("UPDATE users SET plan = 'free'"))
         db.session.commit()
-        print(f"[auth] Added verification columns: {', '.join(added)}")
+        print(f"[auth] Added columns: {', '.join(added)}")
 
 
 def _init_database():
