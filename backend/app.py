@@ -44,6 +44,7 @@ from utils.convert import (
 from utils.protect import protect_pdf, unlock_pdf
 from utils.edit import edit_pages, add_watermark, apply_annotations
 from utils.sign import sign_pdf
+from utils.mailer import contact_email_html, sender_address, send_email
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
@@ -287,6 +288,37 @@ def _require_files(field="files", min_count=1):
 @app.route("/api/health")
 def health():
     return jsonify(status="ok")
+
+
+@app.route("/api/contact", methods=["POST"])
+@limiter.limit("3 per minute")
+def api_contact():
+    """Email a contact-form submission to the site owner."""
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip()
+    message = (data.get("message") or "").strip()
+
+    if not name or not email or not message:
+        return jsonify(error="Please fill in your name, email and message."), 400
+    if len(message) > 5000:
+        return jsonify(error="Message is too long (5000 characters max)."), 400
+
+    to_address = os.environ.get("CONTACT_TO") or sender_address()
+    if not to_address:
+        return jsonify(error="The contact form isn't configured yet."), 503
+
+    sent = send_email(
+        to_address,
+        f"PDFVish contact from {name}",
+        contact_email_html(name, email, message),
+    )
+    if not sent:
+        return jsonify(
+            error="Couldn't send your message right now. Please email us directly."
+        ), 502
+
+    return jsonify(message="Thanks! Your message has been sent.")
 
 
 @app.route("/api/merge", methods=["POST"])

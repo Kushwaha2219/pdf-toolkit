@@ -18,6 +18,7 @@ send_email() returns True on success and False if no backend is configured or
 the send fails, so callers can fall back to dev behaviour (showing the code).
 """
 
+import html
 import json
 import os
 import smtplib
@@ -169,6 +170,31 @@ def send_email(to_address, subject, html):
     if os.environ.get("RESEND_API_KEY"):
         return _send_via_resend(to_address, subject, html)
     return False
+
+
+def sender_address():
+    """The email part of MAIL_FROM (used as a default contact recipient)."""
+    return parseaddr(os.environ.get("MAIL_FROM", DEFAULT_SENDER))[1]
+
+
+def contact_email_html(name, email, message):
+    """Build the email sent to the site owner from the contact form.
+
+    All user-supplied values are HTML-escaped to avoid injection.
+    """
+    safe_name = html.escape(name or "")
+    safe_email = html.escape(email or "")
+    safe_message = html.escape(message or "").replace("\n", "<br>")
+    return f"""\
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto">
+      <h2 style="color:#111">New contact message</h2>
+      <p><strong>Name:</strong> {safe_name}</p>
+      <p><strong>Email:</strong> <a href="mailto:{safe_email}">{safe_email}</a></p>
+      <p><strong>Message:</strong></p>
+      <div style="background:#f3f4f6;padding:12px;border-radius:8px;white-space:normal">
+        {safe_message}
+      </div>
+    </div>"""
 
 
 def reset_email_html(name, link):

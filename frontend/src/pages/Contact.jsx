@@ -1,16 +1,27 @@
 import { useState } from 'react'
+import { postJson } from '../utils/api.js'
 import styles from './Contact.module.css'
 
 export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', message: '' })
   const [sent, setSent] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
 
   const update = (key) => (e) => setForm({ ...form, [key]: e.target.value })
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
-    // No backend wired yet — acknowledge locally for now.
-    setSent(true)
+    setError('')
+    setBusy(true)
+    try {
+      await postJson('/contact', form)
+      setSent(true)
+    } catch (err) {
+      setError(err.message || 'Could not send your message. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -49,6 +60,11 @@ export default function Contact() {
             </div>
           ) : (
             <>
+              {error && (
+                <p style={{ color: 'var(--danger)', margin: '0 0 1rem', fontSize: '0.9rem' }}>
+                  {error}
+                </p>
+              )}
               <label className={styles.field}>
                 <span className={styles.label}>Name</span>
                 <input
@@ -82,8 +98,8 @@ export default function Contact() {
                 />
               </label>
 
-              <button type="submit" className="btn">
-                Send message
+              <button type="submit" className="btn" disabled={busy}>
+                {busy ? 'Sending…' : 'Send message'}
               </button>
             </>
           )}
